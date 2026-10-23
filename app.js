@@ -20,7 +20,7 @@
     tanWarm: "#DFAB7F", parchment: "#F4ECDE",
   };
   const RAMP = ["#F7EFE3", "#E9D4BC", "#D8B38F", "#C38F65", "#A76A3E", "#874A20", "#633416", "#3F2313"];
-  const RATING = [C.slate, C.slateLight, C.tanWarm, C.walnut];
+  const RATING = ["#5B7A8C", "#A9BCC6", "#DCB48C", "#7A3E14"];
   const RATING_TEXT = [C.white, C.espresso, C.espresso, C.white];
   const RATING_NAMES = ["1 Not at all important", "2", "3", "4 Very important"];
   const FONT = '"Source Sans 3", "Segoe UI", Arial, sans-serif';
@@ -105,13 +105,14 @@
     opts = opts || {};
     box.textContent = "";
     const wrap = htmlEl("div", { class: "tbl-wrap" }, box);
-    const t = htmlEl("table", { class: "tbl" + (opts.cls ? " " + opts.cls : "") }, wrap);
+    const stack = headers.length > 2 ? " stack" : ""; // on phones, wide tables become label/value rows
+    const t = htmlEl("table", { class: "tbl" + stack + (opts.cls ? " " + opts.cls : "") }, wrap);
     const tr = htmlEl("tr", {}, htmlEl("thead", {}, t));
     headers.forEach((h) => htmlEl("th", { scope: "col" }, tr, h));
     const tb = htmlEl("tbody", {}, t);
     rows.forEach((r, i) => {
       const row = htmlEl("tr", opts.highlight === i ? { class: "hl" } : {}, tb);
-      r.forEach((cell) => htmlEl("td", {}, row, cell));
+      r.forEach((cell, j) => htmlEl("td", { "data-label": headers[j] }, row, cell));
     });
     return t;
   }
@@ -324,7 +325,7 @@
       if (i >= bins.length) i = bins.length - 1; // the top edge counts in the last bin
       bins[i].count++;
     });
-    const W = boxWidth(box), H = 240;
+    const W = boxWidth(box), H = 270;
     const m = { l: 34, r: 8, t: 26, b: 26 };
     const pw = W - m.l - m.r, ph = H - m.t - m.b;
     const maxC = Math.max(...bins.map((b) => b.count));
@@ -336,11 +337,11 @@
     for (let t = 0; t <= yMax; t += yStep) {
       svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? C.grid : C.rule }, svg);
       svgEl("text", { x: m.l - 6, y: y(t), "text-anchor": "end", "dominant-baseline": "central",
-        "font-size": 11.5, fill: C.muted }, svg, String(t));
+        "font-size": 12, fill: C.muted }, svg, String(t));
     }
-    const xStep = W < 420 ? 100 : 50;
+    const xStep = 100;
     for (let t = 0; t <= top; t += xStep) {
-      svgEl("text", { x: x(t), y: H - 8, "text-anchor": "middle", "font-size": 11.5, fill: C.muted }, svg, "₱" + t);
+      svgEl("text", { x: x(t), y: H - 8, "text-anchor": "middle", "font-size": 12, fill: C.muted }, svg, "₱" + t);
     }
     const bw = (step / top) * pw;
     bins.forEach((b) => {
@@ -389,7 +390,7 @@
     for (let t = 0; t <= yMax; t += 100) {
       svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? C.grid : C.rule }, svg);
       svgEl("text", { x: m.l - 6, y: y(t), "text-anchor": "end", "dominant-baseline": "central",
-        "font-size": 11.5, fill: C.muted }, svg, "₱" + t);
+        "font-size": 12, fill: C.muted }, svg, "₱" + t);
     }
     const slot = pw / groups.length;
     const bw = Math.min(56, slot * 0.42);
@@ -412,10 +413,13 @@
         stroke: C.espresso, "stroke-width": 2 }, gEl);
       s.sorted.filter((v) => v < lo || v > hi).forEach((v) =>
         svgEl("circle", { cx, cy: y(v), r: 2.6, fill: C.muted, "fill-opacity": 0.6 }, gEl));
-      svgEl("text", { x: cx + bw / 2 + 5, y: y(s.median), "dominant-baseline": "central", "font-size": 12,
-        "font-weight": 600, fill: C.espresso }, gEl, peso(round2(s.median)));
-      axisLabel(svg, cx, H - 24 - (narrow ? 14 : 0), g.label, slot - 6, 12.5, C.espresso);
-      svgEl("text", { x: cx, y: H - 8, "text-anchor": "middle", "font-size": 11.5, fill: C.muted }, svg, `n = ${s.n}`);
+      if (!narrow) {
+        svgEl("text", { x: cx + bw / 2 + 5, y: y(s.median), "dominant-baseline": "central", "font-size": 12,
+          "font-weight": 600, fill: C.espresso }, gEl, peso(round2(s.median)));
+      }
+      const shortLabel = narrow ? g.label.replace(" and above", "+").replace("Below ₱100", "< ₱100") : g.label;
+      axisLabel(svg, cx, H - 24 - (narrow ? 14 : 0), shortLabel, slot - 6, 12.5, C.espresso);
+      svgEl("text", { x: cx, y: H - 8, "text-anchor": "middle", "font-size": 12, fill: C.muted }, svg, `n = ${s.n}`);
       const above = rows.filter((r) => r.allowance === g.label && r.amount > 100).length;
       tableRows.push([g.label, String(s.n), peso(round2(s.median)), peso(round2(s.q1)), peso(round2(s.q3)),
         peso(s.min), peso(s.max), pct(above / s.n)]);
@@ -441,8 +445,9 @@
     const data = slots.map((s) => ({ label: s, count: rows.filter((r) => r.time === s).length }));
     const W = boxWidth(box);
     const narrow = slots.some((s) => textWidth(s, 12.5) > (W - 64) / slots.length - 6);
-    const H = narrow ? 254 : 240;
-    const m = { l: 40, r: 24, t: 28, b: narrow ? 44 : 30 };
+    const SHORT_SLOT = { "Before 11 AM": "Before 11", "11 AM–1 PM": "11–1", "1–4 PM": "1–4", "After 4 PM": "After 4" };
+    const H = 290;
+    const m = { l: 40, r: 24, t: 28, b: narrow ? 46 : 30 };
     const pw = W - m.l - m.r, ph = H - m.t - m.b;
     const maxShare = Math.max(...data.map((d) => d.count / n));
     const yMax = Math.max(0.1, Math.ceil(maxShare * 10) / 10);
@@ -452,7 +457,7 @@
     for (let t = 0; t <= yMax + 1e-9; t += yMax > 0.5 ? 0.2 : 0.1) {
       svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t ? C.grid : C.rule }, svg);
       svgEl("text", { x: m.l - 6, y: y(t), "text-anchor": "end", "dominant-baseline": "central",
-        "font-size": 11.5, fill: C.muted }, svg, Math.round(t * 100) + "%");
+        "font-size": 12, fill: C.muted }, svg, Math.round(t * 100) + "%");
     }
     svgEl("polyline", { points: data.map((d, i) => `${x(i)},${y(d.count / n)}`).join(" "),
       fill: "none", stroke: C.walnut, "stroke-width": 2.5, "stroke-linejoin": "round" }, svg);
@@ -466,8 +471,12 @@
       const below = nb.every((v) => v > share);
       svgEl("text", { x: x(i), y: y(share) + (below ? 20 : -12), "text-anchor": "middle", "font-size": 12.5,
         "font-weight": 600, fill: C.espresso }, g, pct(share));
-      axisLabel(svg, x(i), H - 8 - (narrow ? 14 : 0), d.label, pw / slots.length - 6, 12.5, C.espresso);
+      axisLabel(svg, x(i), H - 8 - (narrow ? 18 : 0), narrow ? SHORT_SLOT[d.label] || d.label : d.label,
+        pw / slots.length - 6, 12.5, C.espresso);
     });
+    if (narrow) {
+      svgEl("text", { x: m.l + pw / 2, y: H - 4, "text-anchor": "middle", "font-size": 12, fill: C.muted }, svg, "Time of day (AM to PM)");
+    }
     const best = data.slice().sort((a, b) => b.count - a.count)[0];
     const midday = data[1].count + data[2].count;
     setNote("time", [{ b: best.label }, ` was the busiest slot (${pct(best.count / n)}). `,
@@ -496,7 +505,7 @@
     const H = data.length * rowH + 22;
     const pw = W - labelW - meanW;
     const svg = newSvg(box, W, H, "Stacked bar chart of motive ratings");
-    svgEl("text", { x: W, y: 8, "text-anchor": "end", "font-size": 11.5, fill: C.muted }, svg, "Mean");
+    svgEl("text", { x: W, y: 8, "text-anchor": "end", "font-size": 12, fill: C.muted }, svg, "Mean");
     data.forEach((d, i) => {
       const y0 = 18 + i * rowH;
       svgEl("text", { x: labelW - 10, y: y0 + rowH / 2, "text-anchor": "end", "dominant-baseline": "central",
@@ -508,7 +517,7 @@
         const g = tip(svgEl("g", {}, svg), `${pct(c / d.n)} rated it ${k + 1}`, `${d.label} · ${plural(c, "student")}`);
         svgEl("rect", { class: "mark", x: x0, y: y0 + (rowH - barH) / 2, width: Math.max(w - 2, 1), height: barH, fill: RATING[k] }, g);
         const label = Math.round(c / d.n * 100) + "%";
-        if (w - 2 > textWidth(label, 11.5) + 8) {
+        if (w - 2 >= Math.max(22, textWidth(label, 11.5) + 4)) {
           svgEl("text", { x: x0 + (w - 2) / 2, y: y0 + rowH / 2, "text-anchor": "middle", "dominant-baseline": "central",
             "font-size": 11.5, fill: RATING_TEXT[k] }, g, label);
         }
@@ -545,30 +554,31 @@
     const box = chartBox("rules");
     const rules = D.mining.rules.slice().sort((a, b) => b.Lift - a.Lift);
     const W = boxWidth(box);
-    const rowH = 62, m = { l: 8, r: 96, t: 4, b: 28 };
+    // wide card: rule names in a 260px column beside the dots; narrow: name above its dots
+    const side = W >= 640;
+    const labelW = side ? Math.max(...rules.map((r) => textWidth(ruleName(r), 13, 600))) + 16 : 0;
+    const rowH = side ? 44 : 72, m = { l: 8 + labelW, r: 110, t: 4, b: 28 };
     const H = m.t + rules.length * rowH + m.b;
     const pw = W - m.l - m.r;
-    const xMax = 0.5;
-    const x = (v) => m.l + (v / xMax) * pw;
+    const xMin = 0.1, xMax = 0.5;
+    const x = (v) => m.l + ((v - xMin) / (xMax - xMin)) * pw;
     const svg = newSvg(box, W, H, "Dumbbell chart of the four association rules");
-    for (let t = 0; t <= xMax + 1e-9; t += 0.1) {
+    for (let t = xMin; t <= xMax + 1e-9; t += 0.1) {
       svgEl("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: C.grid }, svg);
-      svgEl("text", { x: x(t), y: H - 8, "text-anchor": "middle", "font-size": 11.5, fill: C.muted }, svg, Math.round(t * 100) + "%");
+      svgEl("text", { x: x(t), y: H - 8, "text-anchor": "middle", "font-size": 12, fill: C.muted }, svg, Math.round(t * 100) + "%");
     }
+    svgEl("line", { x1: m.l, x2: x(xMax), y1: H - m.b, y2: H - m.b, stroke: C.rule }, svg);
     rules.forEach((r, i) => {
       const y0 = m.t + i * rowH;
-      const yl = y0 + 40;
+      const yl = side ? y0 + rowH / 2 : y0 + 50;
       const best = i === 0;
       const base = r["B in all baskets"], conf = r.Confidence;
       const g = tip(svgEl("g", {}, svg), `Lift ${r.Lift.toFixed(2)}`,
         `${ruleName(r)} · ${pct(conf)} of A-buyers vs. ${pct(base)} of all students bought B`);
       svgEl("rect", { x: 0, y: y0, width: W, height: rowH, fill: "transparent" }, g);
-      svgEl("text", { x: m.l, y: y0 + 14, "font-size": 13, "font-weight": best ? 600 : 400, fill: C.espresso }, g, ruleName(r));
       const countText = `${r["Baskets with both"]} baskets with both`;
-      const countX = m.l + textWidth(ruleName(r), 13, best ? 600 : 400) + 8;
-      if (countX + textWidth(countText, 12) <= W) {
-        svgEl("text", { x: countX, y: y0 + 14, "font-size": 12, fill: C.muted }, g, countText);
-      }
+      svgEl("text", { x: 8, y: side ? yl - 6 : y0 + 14, "font-size": 13, "font-weight": best ? 600 : 400, fill: C.espresso }, g, ruleName(r));
+      svgEl("text", { x: 8, y: side ? yl + 11 : y0 + 31, "font-size": 12, fill: C.muted }, g, countText);
       svgEl("line", { x1: x(base), x2: x(conf), y1: yl, y2: yl, stroke: C.tan, "stroke-width": 3 }, g);
       svgEl("circle", { cx: x(base), cy: yl, r: 6, fill: C.tan, stroke: C.white, "stroke-width": 2 }, g);
       svgEl("circle", { class: "mark", cx: x(conf), cy: yl, r: 7, fill: best ? C.pine : C.walnut, stroke: C.white, "stroke-width": 2 }, g);
@@ -589,14 +599,22 @@
       return [ruleName(r), String(r["Baskets with both"]), f4(r.Support), f4(r.Confidence), r.Lift.toFixed(2),
         c["Expected by chance"] !== undefined ? Number(c["Expected by chance"]).toFixed(1) : "–"];
     });
-    makeTable(chartBox("ruleTable"), ["Rule (A → B)", "Baskets", "Support", "Confidence", "Lift", "Expected by chance"], rows, { highlight: 0 });
-    setNote("ruleTable", ["Expected by chance = baskets with both if the two items were unrelated. Only the ", { b: "burger → soft drinks" },
+    makeTable(chartBox("ruleTable"), ["Rule (A → B)", "Baskets", "Support", "Confidence", "Lift", "Expected"], rows, { highlight: 0, cls: "wide-first" });
+    setNote("ruleTable", ["Expected = baskets with both if the two items were unrelated. Only the ", { b: "burger → soft drinks" },
       " rule is clearly above chance (14 vs. 7.7). The other three would fail a cut-off with one basket fewer, so treat them as ideas to test."]);
   }
 
+  function luminance(hex) {
+    const c = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
   function rampColor(share) {
-    const i = Math.min(RAMP.length - 1, Math.floor(share * RAMP.length / 0.8));
-    return { bg: RAMP[i], fg: i >= 4 ? C.white : C.espresso };
+    const top = RAMP.length - 2; // darkest step left out so one cell doesn't jump away from the rest
+    const i = Math.min(top, Math.floor(share * (top + 1) / 0.8));
+    const L = luminance(RAMP[i]);
+    const onWhite = 1.05 / (L + 0.05), onDark = (L + 0.05) / (luminance(C.espresso) + 0.05);
+    return { bg: RAMP[i], fg: onWhite >= onDark ? C.white : C.espresso };
   }
 
   function renderRuleTime() {
@@ -604,7 +622,7 @@
     box.textContent = "";
     const slots = D.orders.time;
     const wrap = htmlEl("div", { class: "tbl-wrap" }, box);
-    const t = htmlEl("table", { class: "tbl heat" }, wrap);
+    const t = htmlEl("table", { class: "tbl heat stack" }, wrap);
     const hr = htmlEl("tr", {}, htmlEl("thead", {}, t));
     htmlEl("th", { scope: "col" }, hr, "Rule");
     slots.forEach((s) => htmlEl("th", { scope: "col", class: "cell" }, hr, s));
@@ -615,17 +633,19 @@
       const isAll = r.rule === "All baskets";
       const tr = htmlEl("tr", isAll ? { class: "total" } : {}, tb);
       const name = isAll ? "All baskets" : r.rule.split(" → ").map(shortItem).join(" → ");
-      htmlEl("td", {}, tr, name);
+      const nameCell = htmlEl("td", {}, tr, name);
+      htmlEl("span", { class: "n" }, nameCell, ` · ${r.total}`);
       r.counts.forEach((c, i) => {
         const share = c / r.total;
         const col = rampColor(share);
-        const td = htmlEl("td", { class: "cell", style: `background:${col.bg};color:${col.fg}` }, tr);
+        const td = htmlEl("td", { class: "cell", "data-label": slots[i],
+          "data-short": ["Before 11", "11–1", "1–4", "After 4"][i], style: `background:${col.bg};color:${col.fg}` }, tr);
         tip(td, `${pct(share)} of this rule's baskets`, `${name} · ${slots[i]} · ${c} of ${r.total}`);
         htmlEl("span", { class: "v" }, td, pct(share));
         htmlEl("span", { class: "c" }, td, `${c} of ${r.total}`);
         if (!isAll && (!best || share > best.share)) best = { name, slot: slots[i], share, c, total: r.total, i };
       });
-      htmlEl("td", {}, tr, String(r.total));
+      htmlEl("td", { "data-label": "Baskets" }, tr, String(r.total));
     });
     const all = D.mining.rulesByTime.find((r) => r.rule === "All baskets");
     setNote("ruleTime", [{ b: best.name }, ` was mostly a ${best.slot} pair: ${best.c} of its ${best.total} baskets (${pct(best.share)}), against ${pct(all.counts[best.i] / all.total)} of all baskets. Each rule has only 11 to 17 baskets, so these timings are hints, not proof.`]);
@@ -637,8 +657,11 @@
     const bestName = models[0].Model;
     const W = boxWidth(box);
     const names = models.map((d) => d.Model.startsWith("Baseline") ? "Baseline (always ₱100 and below)" : d.Model);
-    const labelW = Math.min(W * 0.45, Math.max(...names.map((s) => textWidth(s, 13))) + 12);
-    const rowH = 30, barH = 16, valueW = 52;
+    const fullW = Math.max(...names.map((s) => textWidth(s, 13))) + 12;
+    const wrap = fullW > W * 0.45; // long labels break at " (" onto two lines
+    const labelW = wrap ? Math.max(140, ...names.map((s) => s.split(" (").reduce((a, p, k) =>
+      Math.max(a, textWidth(k ? "(" + p : p, 13)), 0) + 12)) : fullW;
+    const rowH = wrap ? 46 : 44, barH = 20, valueW = 52;
     const H = models.length * rowH + 4;
     const pw = W - labelW - valueW;
     const svg = newSvg(box, W, H, "Bar chart of macro F1-score by model");
@@ -649,11 +672,14 @@
       const fill = d.Model === bestName ? C.pine : isBase ? C.tan : C.walnut;
       const g = tip(svgEl("g", {}, svg), `Macro F1 ${f4(v)}`, `${names[i]} · balanced accuracy ${f4(d["Balanced accuracy"])}`);
       svgEl("rect", { x: 0, y: y0, width: W, height: rowH, fill: "transparent" }, g);
-      let label = names[i];
-      while (textWidth(label, 13) > labelW - 12 && label.length > 8) label = label.slice(0, -2);
-      if (label !== names[i]) label = label.trimEnd() + "…";
-      svgEl("text", { x: labelW - 10, y: y0 + rowH / 2, "text-anchor": "end", "dominant-baseline": "central", "font-size": 13,
-        "font-weight": d.Model === bestName ? 600 : 400, fill: C.espresso }, g, label);
+      const t = svgEl("text", { x: labelW - 10, y: y0 + rowH / 2, "text-anchor": "end", "dominant-baseline": "central", "font-size": 13,
+        "font-weight": d.Model === bestName ? 600 : 400, fill: C.espresso }, g);
+      const k = names[i].indexOf(" (");
+      if (!wrap || k < 0) t.textContent = names[i];
+      else {
+        svgEl("tspan", { x: labelW - 10, dy: -8 }, t, names[i].slice(0, k));
+        svgEl("tspan", { x: labelW - 10, dy: 16 }, t, names[i].slice(k + 1));
+      }
       const w = v * pw;
       svgEl("rect", { class: "mark", x: labelW, y: y0 + (rowH - barH) / 2, width: w, height: barH, fill }, g);
       svgEl("text", { x: labelW + w + 6, y: y0 + rowH / 2, "dominant-baseline": "central", "font-size": 12.5,
@@ -664,7 +690,6 @@
     const tableRows = D.mining.models.map((d) => [d.Model.startsWith("Baseline") ? "Baseline" : d.Model,
       f4(d.Accuracy), f4(d["Balanced accuracy"]), f4(d["Precision (macro)"]), f4(d["Recall (macro)"]), f4(d["F1 (macro)"])]);
     const tb = chartBox("modelTable");
-    tb.style.marginTop = "16px";
     makeTable(tb, ["Model", "Accuracy", "Balanced acc.", "Precision", "Recall", "F1"], tableRows,
       { highlight: D.mining.models.findIndex((d) => d.Model === bestName) });
     const base = D.mining.models.find((d) => d.Model.startsWith("Baseline"));
@@ -834,9 +859,19 @@
     renderModels();
     renderFeatures();
   }
+  // tables wider than their card get a fade on the right edge until scrolled to the end
+  function markScrollable() {
+    document.querySelectorAll(".tbl-wrap").forEach((w) => {
+      const check = () => w.classList.toggle("has-more", w.scrollLeft + w.clientWidth < w.scrollWidth - 2);
+      if (!w.dataset.watch) { w.addEventListener("scroll", check, { passive: true }); w.dataset.watch = "1"; }
+      check();
+    });
+  }
+
   function update() {
     refreshFilterOptions();
     renderFiltered();
+    markScrollable();
     writeHash();
   }
 
@@ -869,16 +904,17 @@
     renderFindings();
     update();
     renderFixed();
+    markScrollable();
     // redraw the SVG charts when the card width changes (phone rotation, window resize)
     let timer = null, lastW = window.innerWidth;
     window.addEventListener("resize", () => {
       if (window.innerWidth === lastW) return;
       lastW = window.innerWidth;
       clearTimeout(timer);
-      timer = setTimeout(() => { renderFiltered(); renderFixed(); }, 150);
+      timer = setTimeout(() => { renderFiltered(); renderFixed(); markScrollable(); }, 150);
     });
     // fonts change text widths; redraw once they are ready
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderFiltered(); renderFixed(); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderFiltered(); renderFixed(); markScrollable(); });
   }
 
   init();
