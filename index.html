@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campus Kiosk Dashboard</title>
+  <meta name="description" content="What 357 Silliman University students bought at the campus food kiosks, how much they paid, and why. Survey results, association rules, and spending-tier models.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2355341C'/%3E%3Crect x='7' y='17' width='4' height='8' fill='%23F9F4EC'/%3E%3Crect x='14' y='11' width='4' height='14' fill='%23F9F4EC'/%3E%3Crect x='21' y='7' width='4' height='18' fill='%23288463'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+
+    <header class="masthead">
+      <h1>Campus Kiosk Spending Dashboard</h1>
+    </header>
+
+    <!-- Filters: one row, above everything they change -->
+    <section class="filters" aria-label="Filters">
+      <div class="filter-row">
+        <label class="filter">
+          <span class="filter-label">Year level</span>
+          <select id="f-year" data-filter="year"></select>
+        </label>
+        <label class="filter">
+          <span class="filter-label">College or department</span>
+          <select id="f-college" data-filter="college"></select>
+        </label>
+        <label class="filter">
+          <span class="filter-label">Daily food allowance</span>
+          <select id="f-allowance" data-filter="allowance"></select>
+        </label>
+        <button type="button" class="reset" id="reset">Reset filters</button>
+      </div>
+      <p class="filter-status" id="filter-status" aria-live="polite"></p>
+    </section>
+
+    <!-- KPIs -->
+    <section class="kpis" aria-label="Key indicators">
+      <div class="kpi">
+        <p class="kpi-value" id="kpi-n"></p>
+        <p class="kpi-label">Students in view</p>
+        <p class="kpi-sub" id="kpi-n-sub"></p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-value" id="kpi-median"></p>
+        <p class="kpi-label">Median amount paid</p>
+        <p class="kpi-sub" id="kpi-median-sub"></p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-value kpi-text" id="kpi-item"></p>
+        <p class="kpi-label">Most bought item</p>
+        <p class="kpi-sub" id="kpi-item-sub"></p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-value kpi-text" id="kpi-motive"></p>
+        <p class="kpi-label">Most important reason</p>
+        <p class="kpi-sub" id="kpi-motive-sub"></p>
+      </div>
+    </section>
+
+    <!-- Survey results: these change with the filters -->
+    <section class="block" aria-labelledby="h-survey">
+      <div class="block-head">
+        <h2 id="h-survey">What students bought and paid</h2>
+      </div>
+
+      <div class="grid">
+        <article class="card">
+          <h3 class="card-title">Item categories bought</h3>
+          <p class="card-sub">Share of baskets that had each item. One basket can have up to 4 items.</p>
+          <div class="chart" data-chart="items"></div>
+          <p class="card-note" data-note="items"></p>
+          <details class="table-view"><summary>Show as table</summary><div data-table="items"></div></details>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Summary statistics of amount paid</h3>
+          <p class="card-sub">Amount paid for the most recent kiosk purchase, in pesos.</p>
+          <div data-chart="summary"></div>
+          <p class="card-note" data-note="summary"></p>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Amount paid</h3>
+          <p class="card-sub">Number of students in each ₱20 range.</p>
+          <div class="chart" data-chart="hist"></div>
+          <p class="card-note" data-note="hist"></p>
+          <details class="table-view"><summary>Show as table</summary><div data-table="hist"></div></details>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Amount paid by daily allowance</h3>
+          <p class="card-sub">Box = middle half of students; line = median; dots = unusual amounts.</p>
+          <div class="chart" data-chart="box"></div>
+          <p class="card-note" data-note="box"></p>
+          <details class="table-view"><summary>Show as table</summary><div data-table="box"></div></details>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Purchases by time of day</h3>
+          <p class="card-sub">Share of students who made their purchase in each time slot.</p>
+          <div class="chart" data-chart="time"></div>
+          <p class="card-note" data-note="time"></p>
+          <details class="table-view"><summary>Show as table</summary><div data-table="time"></div></details>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Reasons for choosing the food</h3>
+          <p class="card-sub">How important each reason was, from 1 (not at all) to 4 (very). Sorted by mean rating.</p>
+          <div class="legend" data-legend="motives"></div>
+          <div class="chart" data-chart="motives"></div>
+          <p class="card-note" data-note="motives"></p>
+          <details class="table-view"><summary>Show as table</summary><div data-table="motives"></div></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- Data mining: fixed, all 357 students -->
+    <section class="block" aria-labelledby="h-mining">
+      <div class="block-head">
+        <h2 id="h-mining">Data mining results</h2>
+        <p class="block-note">Based on all <span data-meta="n"></span> students.</p>
+      </div>
+
+      <h3 class="group-title">Items bought together (Apriori association rules)</h3>
+      <div class="grid">
+        <article class="card">
+          <h3 class="card-title">The four rules</h3>
+          <p class="card-sub">Rule A → B. How often students bought B overall, and how often students who bought A also bought B.</p>
+          <div class="legend" data-legend="rules"></div>
+          <div class="chart" data-chart="rules"></div>
+          <p class="card-note" data-note="rules"></p>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Support, confidence, and lift</h3>
+          <p class="card-sub">Cut-offs: support ≥ 0.03, confidence ≥ 0.25, lift &gt; 1.2.</p>
+          <div data-chart="ruleTable"></div>
+          <p class="card-note" data-note="ruleTable"></p>
+        </article>
+
+        <article class="card span-2">
+          <h3 class="card-title">When each rule's baskets were bought</h3>
+          <p class="card-sub">Share of each rule's baskets in each time slot. Darker = larger share. The last row is all <span data-meta="n"></span> baskets, for comparison.</p>
+          <div data-chart="ruleTime"></div>
+          <p class="card-note" data-note="ruleTime"></p>
+        </article>
+      </div>
+
+      <h3 class="group-title">Predicting who spends above ₱100 (classification)</h3>
+      <div class="grid">
+        <article class="card">
+          <h3 class="card-title">Model scores</h3>
+          <p class="card-sub">Macro F1-score from 5-fold cross-validation. 1.00 would be perfect.</p>
+          <div class="chart" data-chart="models"></div>
+          <div data-chart="modelTable"></div>
+          <p class="card-note" data-note="models"></p>
+        </article>
+
+        <article class="card">
+          <h3 class="card-title">Confusion matrix</h3>
+          <p class="card-sub">Actual tier against predicted tier. Shading = share of each actual row.</p>
+          <div class="chips" role="group" aria-label="Choose a model" data-chips="confusion"></div>
+          <div data-chart="confusion"></div>
+          <p class="card-note" data-note="confusion"></p>
+        </article>
+
+        <article class="card span-2">
+          <h3 class="card-title">Most useful features (Random Forest)</h3>
+          <p class="card-sub">Importance of the top 5 of 56 features, with how each group actually spent.</p>
+          <div class="chart" data-chart="features"></div>
+          <p class="card-note" data-note="features"></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-findings">
+      <div class="block-head">
+        <h2 id="h-findings">Key findings</h2>
+        <p class="block-note">All <span data-meta="n"></span> students.</p>
+      </div>
+      <ol class="findings" id="findings"></ol>
+    </section>
+
+    <footer class="notes">
+      <h2>About the data</h2>
+      <div class="notes-grid">
+        <p><strong>Survey.</strong> <span data-meta="raw"></span> responses were collected through Google Forms from <span data-meta="collected"></span> at <span data-meta="place"></span>.</p>
+        <p><strong>Cleaning.</strong> <span data-meta="removed"></span> responses were removed because they listed more than 4 item categories for one purchase. The remaining <span data-meta="n"></span> responses are used everywhere on this page.</p>
+        <p><strong>Methods.</strong> Association rules were found with Apriori (mlxtend). The spending tier (₱100 and below or above ₱100) was predicted with a Decision Tree, a Random Forest, and Logistic Regression (scikit-learn), tested with stratified 5-fold cross-validation.</p>
+      </div>
+    </footer>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="status" hidden>
+    <span class="tooltip-value"></span>
+    <span class="tooltip-label"></span>
+  </div>
+
+  <noscript><p class="noscript">This dashboard needs JavaScript to draw its charts.</p></noscript>
+  <script src="data/dashboard_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
