@@ -47,17 +47,14 @@ body {
 h1, h2, h3, p { margin: 0; }
 
 /* ---- Masthead ---- */
-.masthead { margin-bottom: var(--s-lg); max-width: 760px; }
-.eyebrow { color: var(--muted); font-size: 13px; margin-bottom: var(--s-xs); }
+.masthead { margin-bottom: var(--s-lg); }
 h1 {
   font-family: var(--serif);
   font-size: 28px;
   line-height: 1.2;
   font-weight: 700;
   color: var(--walnut-deep);
-  margin-bottom: var(--s-sm);
 }
-.lede { font-size: 15px; }
 
 /* ---- Filters ---- */
 .filters {
